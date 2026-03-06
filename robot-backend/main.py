@@ -1,14 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from rag_engine import create_vector_db
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import Ollama
-import os
+import faiss
+import json
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import requests
 
-app = FastAPI(title="Mira AI Campus Assistant")
+app = FastAPI()
 
-# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,61 +16,147 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==========================
+# Load Vector Store
+# ==========================
+index = faiss.read_index("faiss_index.bin")
 
-# Load embeddings
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+with open("documents.json", "r", encoding="utf-8") as f:
+    documents = json.load(f)
 
-# Create or load vector database
-if not os.path.exists("faiss_index"):
-    print("Creating vector database...")
-    vectorstore = create_vector_db()
-else:
-    print("Loading existing vector database...")
-    vectorstore = FAISS.load_local(
-        "faiss_index",
-        embeddings,
-        allow_dangerous_deserialization=True
-)
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-# Load LLaMA model
-llm = Ollama(model="llama3")
+# ==========================
+# Load Destination Data
+# ==========================
+with open("documents2.json", "r") as f:
+    locations = json.load(f)
 
-@app.get("/")
-def home():
-    return {"message": "Mira AI Backend Running"}
+# extract destination names
+destination_names = [item["destination"] for item in locations]
+building_names = [item["building"] for item in locations]
+# Create embeddings for destinations
+destination_embeddings = model.encode(destination_names)
 
 
-@app.get("/ask")
-def ask(question: str):
+# ==========================
+# Destination Embedding Search
+# ==========================
+def find_destination_embedding(query):
 
-    docs = vectorstore.similarity_search(question, k=5)
-    context = "\n\n".join([doc.page_content for doc in docs])
+    query_embedding = model.encode([query])
+
+    scores = np.dot(destination_embeddings, query_embedding[0])
+
+    best_index = np.argmax(scores)
+
+    confidence = scores[best_index]
+
+    if confidence > 0.4:
+        return building_names[best_index]
+    else:
+        return None
+
+
+# ==========================
+# RAG Search Function
+# ==========================
+def search(query, top_k=3):
+    query_embedding = model.encode([query])
+    distances, indices = index.search(np.array(query_embedding), top_k)
+
+    results = [documents[i] for i in indices[0]]
+    return results
+
+
+# ==========================
+# LLM Destination Extractor
+# ==========================
+def extract_destination_llm(user_message):
 
     prompt = f"""
-You are Mira, an intelligent campus assistant robot.
+Extract the destination place from the user query.
 
-Use the provided context as your main knowledge source.
-If the exact answer is not directly stated, infer the most logical answer
-based on the context and general campus understanding.
+Return ONLY the place name.
 
-Do NOT say you don't know.
-Always provide a confident and helpful answer.
+Examples:
+User: How do I go to library?
+Answer: library
 
-If something is unclear, make a reasonable assumption based on the context.
-give more likely humanly response and avoid using sentenses like "according to context" and make more realistic and natural response.
+User: Where is the cafeteria?
+Answer: cafeteria
+
+User: Tell me about admissions
+Answer: none
+
+User Query:
+{user_message}
+"""
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+    )
+
+    destination = response.json()["response"].strip()
+
+    if destination.lower() == "none":
+        return None
+
+    return destination
+
+
+# ==========================
+# Chat Endpoint
+# ==========================
+@app.post("/chat")
+async def chat(data: dict):
+
+    user_message = data.get("message")
+
+    # 1️⃣ Retrieve relevant documents
+    retrieved_docs = search(user_message)
+    context = "\n".join(retrieved_docs)
+
+    # 2️⃣ Send to LLaMA
+    prompt = f"""
+You are MIRA, a smart campus kiosk assistant.
+
+Use the following context to answer the question.
 
 Context:
 {context}
 
 Question:
-{question}
-
-Answer:
+{user_message}
 """
 
-    response = llm.invoke(prompt)
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": False
+        }
+    )
 
-    return {"answer": response}
+    reply = response.json()["response"]
+
+    # 3️⃣ Extract destination using LLM
+    destination = extract_destination_llm(user_message)
+
+    # 4️⃣ Match destination using embeddings
+    matched_destination = None
+
+    if destination:
+        matched_destination = find_destination_embedding(destination)
+
+    return {
+        "reply": reply,
+        "destination": matched_destination
+    }
