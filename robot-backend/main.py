@@ -26,7 +26,10 @@ with open("documents.json", "r", encoding="utf-8") as f:
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-
+#load destination images data
+with open("destination_images.json", "r") as f:
+    destination_images = json.load(f)
+    
 # ==========================
 # Load Destination Data
 # ==========================
@@ -119,15 +122,12 @@ async def chat(data: dict):
 
     user_message = data.get("message")
 
-    # 1️⃣ Retrieve relevant documents
+    # Retrieve documents
     retrieved_docs = search(user_message)
     context = "\n".join(retrieved_docs)
 
-    # 2️⃣ Send to LLaMA
     prompt = f"""
 You are MIRA, a smart campus kiosk assistant.
-
-Use the following context to answer the question.
 
 Context:
 {context}
@@ -147,16 +147,26 @@ Question:
 
     reply = response.json()["response"]
 
-    # 3️⃣ Extract destination using LLM
+    # Extract destination
     destination = extract_destination_llm(user_message)
 
-    # 4️⃣ Match destination using embeddings
     matched_destination = None
+    image1 = None
+    image2 = None
 
     if destination:
         matched_destination = find_destination_embedding(destination)
 
+        if matched_destination:
+            dest_key = matched_destination.lower()
+
+            if dest_key in destination_images:
+                image1 = destination_images[dest_key]["image1"]
+                image2 = destination_images[dest_key]["image2"]
+
     return {
         "reply": reply,
-        "destination": matched_destination
+        "destination": matched_destination,
+        "image1": image1,
+        "image2": image2
     }

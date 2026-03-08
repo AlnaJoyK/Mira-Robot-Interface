@@ -1,18 +1,29 @@
 // Mira Frontend - Connected to FastAPI Backend
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 function App() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [destination, setDestination] = useState("");   // ⭐ NEW
+  const [destination, setDestination] = useState("");
+  const [image1, setImage1] = useState("");
+  const [image2, setImage2] = useState("");
+  const [showLocationBox, setShowLocationBox] = useState(false);
   const [loading, setLoading] = useState(false);
+  const dismissTimerRef = useRef(null);
 
   // Load voices properly
   useEffect(() => {
     window.speechSynthesis.onvoiceschanged = () => {
       window.speechSynthesis.getVoices();
+    };
+  }, []);
+
+  // Clear 2-minute auto-dismiss timer on unmount
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     };
   }, []);
 
@@ -45,13 +56,25 @@ function App() {
     window.speechSynthesis.speak(speech);
   };
 
+  // Hide location box and clear dismiss timer
+  const hideLocationBox = () => {
+    setShowLocationBox(false);
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+  };
+
   // 🤖 Connect to Backend
   const askMira = async () => {
     if (!question) return;
 
+    hideLocationBox();
     setLoading(true);
     setAnswer("");
-    setDestination("");   // reset previous destination
+    setDestination("");
+    setImage1("");
+    setImage2("");
 
     try {
       const response = await fetch("http://localhost:8000/chat", {
@@ -68,11 +91,20 @@ function App() {
 
       const data = await response.json();
 
-      setAnswer(data.reply);
-      setDestination(data.destination);   // ⭐ NEW
+      setAnswer(data.reply ?? data.response ?? "");
+      setDestination(data.destination ?? "");
+      setImage1(data.image1 ?? "");
+      setImage2(data.image2 ?? "");
 
-      speakAnswer(data.reply);
+      // Show location box when response includes images
+      if (data.image1) {
+        setShowLocationBox(true);
+        // Auto-dismiss after 2 minutes
+        if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+        dismissTimerRef.current = setTimeout(hideLocationBox, 2 * 60 * 1000);
+      }
 
+      speakAnswer(data.reply ?? data.response ?? "");
     } catch (error) {
       console.error("Connection error:", error);
       setAnswer(
@@ -85,6 +117,8 @@ function App() {
 
   // 🎤 Speech Recognition
   const startListening = () => {
+    hideLocationBox();
+
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -110,7 +144,7 @@ function App() {
   return (
     <div className="container">
       <div className="card">
-        <h1>Mira 🤖</h1>
+        <h1>Mira</h1>
         <p className="subtitle">Your Smart Campus Assistant</p>
 
         <div className="input-section">
@@ -131,7 +165,6 @@ function App() {
             <h3>Mira says:</h3>
             <p>{answer}</p>
 
-            {/* ⭐ DESTINATION DISPLAY */}
             {destination && (
               <div className="destination-box">
                 <h4>📍 Destination:</h4>
@@ -141,6 +174,19 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Location / QR box - appears when response is displayed */}
+      {answer && showLocationBox && image1 && (
+        <div className="location-popup-box location-popup-visible">
+          <img src={image1} alt="" className="location-bg-img" />
+          <div className="location-popup-content">
+            <div className="location-inner-qr">
+              {image2 && <img src={image2} alt="QR code" className="location-qr-img" />}
+            </div>
+            <p className="location-scan-text">Scan the QR code to get the location</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

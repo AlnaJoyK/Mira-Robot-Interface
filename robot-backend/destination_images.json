@@ -1,0 +1,14 @@
+{
+  "bio block": {
+    "image1": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/main/image/432_1saharda1.png",
+    "image2": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/destination_extractor/image/bioblock_qr.png"
+  },
+  "decennial block": {
+    "image1": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/main/image/432_1saharda1.png",
+    "image2": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/destination_extractor/image/decinnealblock_qr.png"
+  },
+  "knowledge centre": {
+    "image1": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/main/image/432_1saharda1.png",
+    "image2": "https://raw.githubusercontent.com/AlnaJoyK/Mira-Robot-Interface/refs/heads/destination_extractor/image/knowledgecentre_qr.png"
+  }
+}

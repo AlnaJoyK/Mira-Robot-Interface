@@ -1,0 +1,146 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, rgba(30, 60, 114, 0.0), rgba(42, 82, 152, 0.0)),
+    url("/public/Collegesahrdaya.jpeg") center/cover no-repeat fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 20px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  padding: 40px;
+  border-radius: 20px;
+  width: 500px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  opacity: 0.8;
+  margin-bottom: 20px;
+}
+
+.input-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+}
+
+button {
+  padding: 10px 15px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: #ff9800;
+  color: white;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+button:hover {
+  background: #e68900;
+}
+
+.answer-box {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 15px;
+  border-radius: 15px;
+  margin-top: 10px;
+}
+
+.loading {
+  font-style: italic;
+}
+
+/* Location / QR popup box - right of card */
+.location-popup-box {
+  position: relative;
+  width: 280px;
+  min-height: 320px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+
+  /* Popup animation */
+  opacity: 0;
+  transform: scale(0.85) translateX(20px);
+  animation: locationPopupIn 0.45s ease-out forwards;
+}
+
+.location-popup-visible {
+  opacity: 1;
+}
+
+@keyframes locationPopupIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+/* Inner QR box - 1/3 size of main box, centered */
+.location-inner-qr {
+  width: 93px;   /* 280px / 3 ≈ 93px */
+  height: 93px;
+  /* background-color: rgba(255, 255, 255, 0.95); */
+  border-radius: 12px;
+  /* border: 3px solid rgba(255, 255, 255, 0.9); */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+}
+
+.location-scan-text {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+.location-qr-image{
+  width: 50px;
+  height: 50px;
+}
